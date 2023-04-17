@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
 import requests
+import urllib3
 import sys
 import os
 import time
@@ -29,7 +30,11 @@ class Spider:
         self.original_url = original_url
         if self.debug_data:
             self.debug_file = open(self.image_dir + "/urls.txt", "wt")
-        self.scrap(original_url, 1)
+        try:
+            print("Start scrapping")
+            self.scrap(original_url, 1)
+        except Exception as err:
+            print(err)
         if self.debug_data:
             self.debug_file.close()
 
@@ -37,8 +42,16 @@ class Spider:
         if level > self.max_depth or url in self.visited_urls:
             return
         self.visited_urls.add(url)
-        req = requests.get(url)
-        soup = BeautifulSoup(req.content.decode(encoding="iso-8859-1"), 'html.parser')
+        if url.startswith("file://"):
+            http_pool = urllib3.PoolManager()
+            #open_file = open(url[len("file://")::], "rt")
+            #data_html = open.read()
+            #open_file.close()
+            data_html = http_pool.request('GET', url).data
+        else:
+            req = requests.get(url)
+            data_html = req.content.decode("utf-8")
+        soup = BeautifulSoup(data_html, "html.parser")
         image_tags = soup.find_all('img')
         for link in image_tags:
             image_url = link.get('src')
@@ -51,9 +64,14 @@ class Spider:
             for link in soup.find_all():
                 new_reference = link.get('href')
                 if new_reference != None and isinstance(new_reference, str) and new_reference.startswith(self.original_url):
-                    self.scrap(new_reference, level=(level + 1))
+                    try:
+                        self.scrap(new_reference, level=(level + 1))
+                    except Exception:
+                        pass
     def get_extension(image_url:str):
-        return image_url[image_url.rfind('.')::]
+        if image_url.rfind('.') != -1:
+            return image_url[image_url.rfind('.')::]
+        return ""
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Web scrapper, ./spider [-rlp] URL')
@@ -62,7 +80,11 @@ if __name__ == '__main__':
     parser.add_argument('URL', default="", action='store', help="URL to start searching")
     parser.add_argument('-p', default="./data", action='store', help="Path to store files")
     args = parser.parse_args()
-    print(vars(args))
+    print (f"Recursion: {args.r}")
+    print (f"Max Level: {args.l}")
+    print (f"Path: {args.p}")
+    print (f"URL: {args.URL}")
+
     if args.r == False and args.l != None:
         raise AssertionError("Cannot specify depth if recursion not activated")
     spidy = Spider(recursion=args.r, max_depth=args.l, image_dir=args.p, debug_data=True)
