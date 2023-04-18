@@ -1,10 +1,9 @@
 from bs4 import BeautifulSoup
 import requests
-import urllib3
-import sys
 import os
-import time
 import argparse
+import urllib
+from urllib.parse import urlparse
 
 class Spider:
     def __init__(self, recursion=False, max_depth=1, image_dir="./data", debug_data=False) -> None:
@@ -31,7 +30,6 @@ class Spider:
         if self.debug_data:
             self.debug_file = open(self.image_dir + "/urls.txt", "wt")
         try:
-            print("Start scrapping")
             self.scrap(original_url, 1)
         except Exception as err:
             print(err)
@@ -43,11 +41,10 @@ class Spider:
             return
         self.visited_urls.add(url)
         if url.startswith("file://"):
-            http_pool = urllib3.PoolManager()
-            #open_file = open(url[len("file://")::], "rt")
-            #data_html = open.read()
-            #open_file.close()
-            data_html = http_pool.request('GET', url).data
+            file_path = urllib.parse.unquote(url)[len("file://")::]
+            open_file = open(file_path, "rt")
+            data_html = open_file.read()
+            open_file.close()
         else:
             req = requests.get(url)
             data_html = req.content.decode("utf-8")
@@ -56,9 +53,13 @@ class Spider:
         for link in image_tags:
             image_url = link.get('src')
             if image_url != None and image_url != "" and not image_url in self.visited_images and Spider.get_extension(Spider.get_extension(image_url)) in (".png", ".gif", ".jpg", ".jpeg", ".bmp"):
+                print(image_url)
                 if self.debug_data:
                     self.debug_file.write(f"{self.files_downloaded} {image_url}\n")
-                self.download_image(image_url)
+                try:
+                    self.download_image(image_url)
+                except Exception:
+                    pass
                 self.visited_images.add(image_url)
         if self.recursion:
             for link in soup.find_all():
@@ -87,5 +88,7 @@ if __name__ == '__main__':
 
     if args.r == False and args.l != None:
         raise AssertionError("Cannot specify depth if recursion not activated")
+    if args.l == None:
+        args.l = 5
     spidy = Spider(recursion=args.r, max_depth=args.l, image_dir=args.p, debug_data=True)
     spidy.start_scrapping(args.URL)
