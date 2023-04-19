@@ -53,7 +53,6 @@ class Spider:
         for link in image_tags:
             image_url = link.get('src')
             if image_url != None and image_url != "" and not image_url in self.visited_images and Spider.get_extension(Spider.get_extension(image_url)) in (".png", ".gif", ".jpg", ".jpeg", ".bmp"):
-                print(image_url)
                 if self.debug_data:
                     self.debug_file.write(f"{self.files_downloaded} {image_url}\n")
                 try:
@@ -80,15 +79,21 @@ if __name__ == '__main__':
     parser.add_argument('-l', type=int, default=None, action='store', help="Define the depth")
     parser.add_argument('URL', default="", action='store', help="URL to start searching")
     parser.add_argument('-p', default="./data", action='store', help="Path to store files")
+    parser.add_argument('-d', default=False, action='store_true', help="Debug mode files")
+
     args = parser.parse_args()
     print (f"Recursion: {args.r}")
     print (f"Max Level: {args.l}")
     print (f"Path: {args.p}")
     print (f"URL: {args.URL}")
+    print (f"Debug: {args.d}")
 
     if args.r == False and args.l != None:
         raise AssertionError("Cannot specify depth if recursion not activated")
     if args.l == None:
         args.l = 5
-    spidy = Spider(recursion=args.r, max_depth=args.l, image_dir=args.p, debug_data=True)
-    spidy.start_scrapping(args.URL)
+    try:
+        spidy = Spider(recursion=args.r, max_depth=args.l, image_dir=args.p, debug_data=args.d)
+        spidy.start_scrapping(args.URL)
+    except FileExistsError:
+        print("Trying to create a folder but it exists.")
