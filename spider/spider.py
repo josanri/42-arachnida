@@ -90,6 +90,8 @@ if __name__ == '__main__':
 
     if args.r == False and args.l != None:
         raise AssertionError("Cannot specify depth if recursion not activated")
+    if args.r < 0:
+        raise AssertionError("Cannot specify depth zero")
     if args.l == None:
         args.l = 5
     try:
